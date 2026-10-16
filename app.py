@@ -12,13 +12,102 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
-DATABASE = os.path.join(os.path.dirname(__file__), "homework.db")
+# Online (Vercel): DATABASE_URL points to Supabase Postgres.
+# On your own computer: no DATABASE_URL, so a local SQLite file is used.
+DATABASE_URL = os.environ.get("DATABASE_URL")
+USE_POSTGRES = bool(DATABASE_URL)
+DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "homework.db")
+
+if USE_POSTGRES:
+    import psycopg2
+    import psycopg2.extras
+
+SQLITE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS homework (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    subject TEXT NOT NULL,
+    description TEXT,
+    due_date TEXT NOT NULL,
+    done INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+);
+"""
+
+POSTGRES_SCHEMA = [
+    """
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS homework (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        subject TEXT NOT NULL,
+        description TEXT,
+        due_date TEXT NOT NULL,
+        done INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+    )
+    """,
+]
+
+_db_ready = False
+
+
+class Database:
+    """Small wrapper so the same queries work on SQLite and Postgres."""
+
+    def __init__(self):
+        if USE_POSTGRES:
+            self.conn = psycopg2.connect(DATABASE_URL, sslmode="require", connect_timeout=10)
+        else:
+            self.conn = sqlite3.connect(DATABASE)
+            self.conn.row_factory = sqlite3.Row
+
+    def execute(self, sql, params=()):
+        if USE_POSTGRES:
+            cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cur.execute(sql.replace("?", "%s"), params)
+            return cur
+        return self.conn.execute(sql, params)
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+
+def init_db():
+    db = Database()
+    if USE_POSTGRES:
+        for statement in POSTGRES_SCHEMA:
+            db.execute(statement)
+    else:
+        db.conn.executescript(SQLITE_SCHEMA)
+    db.commit()
+    db.close()
 
 
 def get_db():
+    global _db_ready
+    if not _db_ready:
+        init_db()
+        _db_ready = True
     if "db" not in g:
-        g.db = sqlite3.connect(DATABASE)
-        g.db.row_factory = sqlite3.Row
+        g.db = Database()
     return g.db
 
 
@@ -27,33 +116,6 @@ def close_db(exc):
     db = g.pop("db", None)
     if db is not None:
         db.close()
-
-
-def init_db():
-    db = sqlite3.connect(DATABASE)
-    db.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS homework (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            subject TEXT NOT NULL,
-            description TEXT,
-            due_date TEXT NOT NULL,
-            done INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        );
-        """
-    )
-    db.commit()
-    db.close()
 
 
 def login_required(view):

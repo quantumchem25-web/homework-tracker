@@ -2,6 +2,8 @@
 
 A simple website where students can track their homework.
 
+🌐 Live site: https://homework-tracker-eight-iota.vercel.app
+
 ## Features
 - Sign up and log in (passwords are hashed)
 - Add homework with subject, description and due date

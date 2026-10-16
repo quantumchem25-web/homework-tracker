@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Homework Tracker{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('dashboard') if session.get('user_id') else url_for('login') }}">📚 Homework Tracker</a>
+    <nav>
+      {% if session.get('user_id') %}
+        <span class="hello">Hi, {{ session.get('name') }}</span>
+        <a class="btn btn-ghost" href="{{ url_for('logout') }}">Log out</a>
+      {% else %}
+        <a class="btn btn-ghost" href="{{ url_for('login') }}">Log in</a>
+        <a class="btn btn-primary" href="{{ url_for('signup') }}">Sign up</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

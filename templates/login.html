@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Log in — Homework Tracker{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h1>Welcome back 👋</h1>
+  <p class="muted">Log in to see your homework.</p>
+  <form method="post" action="{{ url_for('login') }}">
+    <label>Email</label>
+    <input type="email" name="email" required placeholder="you@example.com">
+    <label>Password</label>
+    <input type="password" name="password" required placeholder="Your password">
+    <button class="btn btn-primary btn-block" type="submit">Log in</button>
+  </form>
+  <p class="muted center">No account? <a href="{{ url_for('signup') }}">Sign up</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Homework Tracker{% endblock %}
+{% block content %}
+<h1>Your homework</h1>
+
+<div class="stats">
+  <div class="stat stat-done">
+    <span class="stat-num">{{ done }}</span>
+    <span class="stat-label">Done</span>
+  </div>
+  <div class="stat stat-pending">
+    <span class="stat-num">{{ pending }}</span>
+    <span class="stat-label">Pending</span>
+  </div>
+  <div class="stat stat-late">
+    <span class="stat-num">{{ late }}</span>
+    <span class="stat-label">Late</span>
+  </div>
+</div>
+
+<section class="card">
+  <h2>➕ Add homework</h2>
+  <form method="post" action="{{ url_for('add_homework') }}" class="add-form">
+    <input type="text" name="subject" required placeholder="Subject (e.g. Maths)">
+    <input type="text" name="description" placeholder="Description (optional)">
+    <input type="date" name="due_date" required>
+    <button class="btn btn-primary" type="submit">Add</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>📅 Due this week</h2>
+  {% if due_this_week %}
+    <ul class="hw-list">
+      {% for hw in due_this_week %}
+        <li class="hw-item">
+          <div>
+            <strong>{{ hw.subject }}</strong>
+            {% if hw.description %}<span class="muted"> — {{ hw.description }}</span>{% endif %}
+            <div class="due">Due: {{ hw.due_date }}</div>
+          </div>
+          <div class="hw-actions">
+            <form method="post" action="{{ url_for('toggle', homework_id=hw.id) }}">
+              <button class="btn btn-small btn-done" type="submit">Mark done</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">Nothing due this week. 🎉</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>🗂️ All homework</h2>
+  {% if all_homework %}
+    <ul class="hw-list">
+      {% for hw in all_homework %}
+        <li class="hw-item {% if hw.done %}done{% endif %}">
+          <div>
+            <strong>{{ hw.subject }}</strong>
+            {% if hw.description %}<span class="muted"> — {{ hw.description }}</span>{% endif %}
+            <div class="due">
+              Due: {{ hw.due_date }}
+              {% if hw.done %}
+                <span class="tag tag-done">Done</span>
+              {% elif hw.due_date < today.isoformat() %}
+                <span class="tag tag-late">Late</span>
+              {% else %}
+                <span class="tag tag-pending">Pending</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="hw-actions">
+            <form method="post" action="{{ url_for('toggle', homework_id=hw.id) }}">
+              <button class="btn btn-small {% if hw.done %}btn-undo{% else %}btn-done{% endif %}" type="submit">
+                {{ "Undo" if hw.done else "Mark done" }}
+              </button>
+            </form>
+            <form method="post" action="{{ url_for('delete', homework_id=hw.id) }}">
+              <button class="btn btn-small btn-delete" type="submit">Delete</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No homework yet. Add your first one above! 🚀</p>
+  {% endif %}
+</section>
+{% endblock %}
